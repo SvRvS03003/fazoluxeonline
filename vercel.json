@@ -2,24 +2,6 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
-  "functions": {
-    "api/index.js": {
-      "runtime": "nodejs20.x",
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "builds": [
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
-    },
-    {
-      "src": "api/index.js",
-      "use": "@vercel/node"
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -28,11 +10,6 @@
     {
       "source": "/token",
       "destination": "/api/index.js"
-    },
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/$1",
-      "continue": true
     },
     {
       "source": "/((?!api/).*)",
