@@ -1,0 +1,39 @@
+{
+  "name": "sr-monitor-desktop",
+  "version": "1.0.0",
+  "description": "SR Monitor - Smart Loom Monitor Desktop Application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac"
+  },
+  "author": "SR Monitor",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "electron-log": "^5.0.0"
+  },
+  "build": {
+    "appId": "com.srmonitor.desktop",
+    "productName": "SR Monitor",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "icon.png",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "**/frontend/dist/**"
+    ],
+    "directories": {
+      "output": "dist"
+    }
+  }
+}

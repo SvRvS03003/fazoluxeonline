@@ -1,0 +1,36 @@
+{
+  "name": "SRMonitor",
+  "version": "1.0.0",
+  "description": "Industrial Monitoring System - Node.js Backend",
+  "main": "manager.js",
+  "scripts": {
+    "start": "node manager.js",
+    "start:server": "node server.js",
+    "build": "pkg manager.js --targets node18-win-x64 --output SRMonitor-Control.exe",
+    "build:mac": "pkg manager.js --targets node18-macos-x64 --output SRMonitor-macos",
+    "build:release": "node build_release.js --download-cloudflared",
+    "build:installer": "bash windows/build_installer.sh"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "sql.js": "^1.10.2",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "bin": "manager.js",
+  "pkg": {
+    "scripts": [
+      "manager.js",
+      "server.js",
+      "db.js"
+    ],
+    "assets": [
+      "../frontend/dist/**/*"
+    ]
+  }
+}

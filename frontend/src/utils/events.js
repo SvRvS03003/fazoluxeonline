@@ -1,0 +1,1 @@
+export const emitRefresh = () => window.dispatchEvent(new Event('app-refresh'));

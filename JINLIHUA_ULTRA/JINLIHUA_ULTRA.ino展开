@@ -1,0 +1,216 @@
+/*
+ * JINLIHUA TEXTILE MONITORING SYSTEM v3.0 (ULTRA-MESH)
+ * Core 0: RS485 / Modbus RTU
+ * Core 1: Mesh / WebServer / UI
+ */
+
+#include "painlessMesh.h"
+#include <ESPAsyncWebServer.h>
+#include <ArduinoJson.h>
+
+// --- CONFIGURATION ---
+#define MESH_PREFIX "SvRvS_Industrial"
+#define MESH_PASSWORD "vysoftfazo1965"
+#define MESH_PORT 5555
+#define NODE_ID 1 // Change this for each node (1 = Gateway)
+
+#define RS485_TX 17
+#define RS485_RX 16
+#define RS485_CTRL 4
+
+// --- DATA STRUCTURES ---
+struct MachineData {
+  uint16_t id;
+  float meters;
+  float shift_meters;
+  float asnova_length;
+  uint16_t speed;
+  uint32_t last_seen;
+  bool online;
+};
+
+MachineData looms[69]; // 1-68
+painlessMesh mesh;
+AsyncWebServer server(80);
+
+// --- RS485 / MODBUS (CORE 0) ---
+void rs485Task(void * pvParameters) {
+  Serial2.begin(9600, SERIAL_8N1, RS485_RX, RS485_TX);
+  pinMode(RS485_CTRL, OUTPUT);
+  digitalWrite(RS485_CTRL, LOW);
+
+  for(;;) {
+    // Basic Modbus Fake/Real Polling Logic
+    // In production: Read Function 03 from Slave 1
+    looms[NODE_ID].meters += 0.1; // Demo increment
+    looms[NODE_ID].last_seen = millis();
+    looms[NODE_ID].online = true;
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+}
+
+// --- MESH (CORE 1) ---
+void receivedCallback(uint32_t from, String &msg) {
+  StaticJsonDocument<512> doc;
+  deserializeJson(doc, msg);
+  int id = doc["id"];
+  if (id > 0 && id <= 68) {
+    looms[id].meters = doc["m"];
+    looms[id].speed = doc["s"];
+    looms[id].asnova_length = doc["a"];
+    looms[id].last_seen = millis();
+    looms[id].online = true;
+  }
+}
+
+// --- WEB UI (INLINE HTML) ---
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JINLIHUA MONITORING</title>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --primary: #38bdf8; --success: #22c55e; --warning: #eab308; --danger: #ef4444; }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding: 20px; }
+        .grid-container { display: flex; gap: 40px; }
+        .main-block { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; flex: 4; }
+        .side-block { display: flex; flexDirection: column; gap: 10px; flex: 1; border-left: 2px solid #334155; padding-left: 20px; }
+        .loom { aspect-ratio: 1; border-radius: 8px; background: var(--card); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; cursor: pointer; border: 1px solid transparent; transition: 0.3s; }
+        .loom:hover { transform: scale(1.05); border-color: var(--primary); }
+        .green { background: var(--success); color: black; }
+        .yellow { background: var(--warning); color: black; }
+        .red { background: var(--danger); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 100; }
+        .modal-content { background: var(--card); padding: 30px; border-radius: 12px; width: 400px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #0f172a; border: 1px solid #334155; color: white; }
+        button { width: 100%; padding: 10px; background: var(--primary); border: none; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
+        <h1>JINLIHUA MESH V3.0</h1>
+        <button id="exportBtn" style="width: auto; padding: 5px 15px;">CSV EXPORT</button>
+    </div>
+    
+    <div class="grid-container">
+        <div id="mainBlock" class="main-block"></div>
+        <div id="sideBlock" class="side-block"></div>
+    </div>
+
+    <div id="modal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 id="modalTitle">Stanok S1</h2>
+            <p>Xolati: <span id="modalStatus">Online</span></p>
+            <p>Hozirgi metr: <span id="modalMeters">0</span> m</p>
+            <label>Asnova Uzunligi (m):</label>
+            <input type="number" id="asnovaInput" placeholder="Metr kiriting...">
+            <button onclick="saveAsnova()">SAQLASH</button>
+        </div>
+    </div>
+
+    <script>
+        let currentS = null;
+        function updateUI() {
+            fetch('/data').then(r => r.json()).then(data => {
+                renderGrid(data);
+            });
+        }
+
+        function renderGrid(data) {
+            const main = document.getElementById('mainBlock');
+            const side = document.getElementById('sideBlock');
+            main.innerHTML = ''; side.innerHTML = '';
+            
+            for(let i=1; i<=68; i++) {
+                const m = data[i] || {m:0, a:0, o:false};
+                const div = document.createElement('div');
+                div.className = 'loom ' + (m.o ? (m.a - m.m > 10 ? 'green' : 'yellow') : 'red');
+                if (m.a > 0 && m.a - m.m <= 0) div.className = 'loom red';
+                div.innerHTML = `<div>S${i}</div><div style="font-size:10px">${m.m.toFixed(1)}m</div>`;
+                div.onclick = () => openModal(i, m);
+                
+                if (i <= 60) main.appendChild(div);
+                else side.appendChild(div);
+            }
+        }
+
+        function openModal(id, m) {
+            currentS = id;
+            document.getElementById('modalTitle').innerText = 'Stanok S' + id;
+            document.getElementById('modalMeters').innerText = m.m.toFixed(1);
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+        
+        function saveAsnova() {
+            const val = document.getElementById('asnovaInput').value;
+            fetch(`/set?id=${currentS}&val=${val}`).then(() => { closeModal(); updateUI(); });
+        }
+
+        setInterval(updateUI, 2000);
+        updateUI();
+    </script>
+</body>
+</html>
+)rawliteral";
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Mesh Setup
+  mesh.setDebugMsgTypes(ERROR | STARTUP);
+  mesh.init(MESH_PREFIX, MESH_PASSWORD, MESH_PORT);
+  mesh.onReceive(&receivedCallback);
+
+  if (NODE_ID == 1) { // Gateway
+    server.on("/data", HTTP_GET, [](AsyncWebServerRequest *request){
+      DynamicJsonDocument doc(16384);
+      for(int i=1; i<=68; i++) {
+        JsonObject obj = doc.createNestedObject(String(i));
+        obj["m"] = looms[i].meters;
+        obj["a"] = looms[i].asnova_length;
+        obj["o"] = (millis() - looms[i].last_seen < 10000);
+      }
+      String json;
+      serializeJson(doc, json);
+      request->send(200, "application/json", json);
+    });
+
+    server.on("/set", HTTP_GET, [](AsyncWebServerRequest *request){
+      int id = request->getParam("id")->value().toInt();
+      float val = request->getParam("val")->value().toFloat();
+      if (id > 0 && id <= 68) looms[id].asnova_length = val;
+      request->send(200, "text/plain", "OK");
+    });
+
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send_P(200, "text/html", index_html);
+    });
+
+    server.begin();
+    Serial.println("Web Server Started (Gateway)");
+  }
+
+  // Create RS485 Task on Core 0
+  xTaskCreatePinnedToCore(rs485Task, "RS485", 4096, NULL, 1, NULL, 0);
+}
+
+void loop() {
+  mesh.update();
+  
+  // Every 2s, Slaves send their data to Gateway
+  static unsigned long lastUpdate = 0;
+  if (NODE_ID != 1 && millis() - lastUpdate > 2000) {
+    StaticJsonDocument<256> doc;
+    doc["id"] = NODE_ID;
+    doc["m"] = looms[NODE_ID].meters;
+    doc["s"] = looms[NODE_ID].speed;
+    doc["a"] = looms[NODE_ID].asnova_length;
+    String msg;
+    serializeJson(doc, msg);
+    mesh.sendBroadcast(msg);
+    lastUpdate = millis();
+  }
+}

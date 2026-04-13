@@ -1,0 +1,10 @@
+{
+  "serverPort": 8000,
+  "serviceUiPort": 8090,
+  "autoStartServer": true,
+  "autoStartTunnel": true,
+  "autoOpenBrowserOnLaunch": false,
+  "publicUrl": "https://monitor.example.com",
+  "cloudflareBinary": "cloudflared.exe",
+  "cloudflareTunnelToken": "PASTE_YOUR_NAMED_TUNNEL_TOKEN_HERE"
+}

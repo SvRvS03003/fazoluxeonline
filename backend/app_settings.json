@@ -1,0 +1,52 @@
+{
+  "company_name": "FazoLuxe",
+  "logo_text": "SR",
+  "notification_duration": 10,
+  "banner_enabled": false,
+  "banner_message": "",
+  "banner_duration": 5,
+  "banner_color": "#00d2ff",
+  "banner_bg": "rgba(0,210,255,0.15)",
+  "role_sections": {
+    "ADMIN": [
+      "dashboard",
+      "mechanic",
+      "uzlavyaz",
+      "system",
+      "master",
+      "nazoratchi",
+      "users",
+      "reports",
+      "admin"
+    ],
+    "MASTER": [
+      "dashboard",
+      "mechanic",
+      "master",
+      "reports"
+    ],
+    "NAZORATCHI": [
+      "dashboard",
+      "nazoratchi",
+      "users",
+      "reports",
+      "mechanic"
+    ],
+    "MECHANIC": [
+      "dashboard",
+      "mechanic",
+      "system"
+    ],
+    "ELECTRIC": [
+      "dashboard",
+      "mechanic",
+      "system"
+    ],
+    "UZLAVYAZ": [
+      "dashboard",
+      "uzlavyaz",
+      "mechanic",
+      "reports"
+    ]
+  }
+}
