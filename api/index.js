@@ -6,6 +6,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Handle both /api/path and /path
+const router = express.Router();
+app.use('/api', router);
+app.use('/', router);
+
 const JWT_SECRET = 'SRMonitorSecretKey2026';
 
 const DEMO_USERS = [
@@ -30,7 +35,7 @@ function authenticateToken(req, res, next) {
   }
 }
 
-app.post('/token', (req, res) => {
+router.post('/token', (req, res) => {
   const { username, password } = req.body || {};
   const user = DEMO_USERS.find(u => u.username === username);
   if (!user || password !== user.password) {
@@ -40,14 +45,14 @@ app.post('/token', (req, res) => {
   res.json({ access_token: token, token_type: 'bearer' });
 });
 
-app.get('/health', (req, res) => res.json({ ok: true, status: 'running' }));
+router.get('/health', (req, res) => res.json({ ok: true, status: 'running' }));
 
-app.get('/users/me', authenticateToken, (req, res) => res.json({ id: req.user.id, username: req.user.username, full_name: req.user.full_name, role: req.user.role, shift_type: req.user.shift_type }));
+router.get('/users/me', authenticateToken, (req, res) => res.json({ id: req.user.id, username: req.user.username, full_name: req.user.full_name, role: req.user.role, shift_type: req.user.shift_type }));
 
-app.get('/settings', authenticateToken, (req, res) => res.json({ notification_duration: 10, banner_enabled: false, banner_message: '', logo_text: 'SR', company_name: 'FazoLuxe' }));
+router.get('/settings', authenticateToken, (req, res) => res.json({ notification_duration: 10, banner_enabled: false, banner_message: '', logo_text: 'SR', company_name: 'FazoLuxe' }));
 
-app.get('/machines', authenticateToken, (req, res) => res.json([]));
+router.get('/machines', authenticateToken, (req, res) => res.json([]));
 
-app.put('/settings', authenticateToken, (req, res) => res.json({ ok: true }));
+router.put('/settings', authenticateToken, (req, res) => res.json({ ok: true }));
 
 module.exports = app;
