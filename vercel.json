@@ -2,6 +2,13 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
+  "functions": {
+    "api/index.js": {
+      "runtime": "nodejs20.x",
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "builds": [
     {
       "src": "frontend/package.json",
@@ -24,7 +31,8 @@
     },
     {
       "source": "/((?!api/).*)",
-      "destination": "/$1"
+      "destination": "/$1",
+      "continue": true
     },
     {
       "source": "/((?!api/).*)",
