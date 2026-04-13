@@ -23,10 +23,7 @@ npm install
 npm run dev
 ```
 
-## Login
 
-- **Username:** SvRvS3003
-- **Password:** Saidakbar3003!
 
 ## Rollar
 
